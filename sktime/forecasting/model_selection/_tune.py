@@ -1793,7 +1793,12 @@ class ForecastingOptunaSearchCV(BaseGridSearch):
         meta["error_score"] = self.error_score
         meta["scoring_name"] = scoring_name
 
-        study = optuna.create_study(direction="minimize")
+        if scoring.get_tag("lower_is_better"):
+            direction = "minimize"
+        else:
+            direction = "maximize"
+        study = optuna.create_study(direction=direction)
+
         for _ in range(self.n_evals):
             trial = study.ask(self.param_grid)  # pass the pre-defined distributions.
             params = {name: trial.params[name] for name, v in self.param_grid.items()}
@@ -1811,7 +1816,7 @@ class ForecastingOptunaSearchCV(BaseGridSearch):
             ascending=scoring.get_tag("lower_is_better")
         )
         self.cv_results_ = results
-        self.best_index_ = results["value"].idxmin()
+        self.best_index_ = results.loc[:, f"rank_{scoring_name}"].argmin()
         if self.best_index_ == -1:
             raise NotFittedError(
                 f"""All fits of forecaster failed,
